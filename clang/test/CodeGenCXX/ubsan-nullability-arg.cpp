@@ -10,16 +10,10 @@ struct S0 {
 void foo1(void (S0::*_Nonnull f)());
 
 // ITANIUM-LABEL: @_ZN10method_ptr5test1Ev(){{.*}} {
-// ITANIUM: br i1 true, label %[[CONT:.*]], label %[[FAIL:[^,]*]]
-// ITANIUM-EMPTY:
-// ITANIUM-NEXT: [[FAIL]]:
-// ITANIUM-NEXT:   call void @__ubsan_handle_nullability_arg
+// ITANIUM-NOT: __ubsan_handle_nullability_arg
 
 // MSVC-LABEL: @"?test1@method_ptr@@YAXXZ"(){{.*}} {
-// MSVC: br i1 true, label %[[CONT:.*]], label %[[FAIL:[^,]*]]
-// MSVC-EMPTY:
-// MSVC-NEXT: [[FAIL]]:
-// MSVC-NEXT:   call void @__ubsan_handle_nullability_arg
+// MSVC-NOT: __ubsan_handle_nullability_arg
 void test1() {
   foo1(&S0::foo1);
 }

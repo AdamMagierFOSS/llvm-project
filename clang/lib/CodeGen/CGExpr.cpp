@@ -4188,6 +4188,17 @@ void CodeGenFunction::EmitCheck(
   assert(Checked.size() > 0);
   assert(CheckHandler >= 0 &&
          size_t(CheckHandler) < std::size(SanitizerHandlers));
+
+  // If all check conditions are constant true, the check can never fire.
+  // Skip emitting it so that sanitizer instrumentation does not prevent
+  // optimizations when LLVM optimization passes are disabled.
+  if (llvm::all_of(Checked, [](const auto &P) {
+        if (auto *C = dyn_cast<llvm::ConstantInt>(P.first))
+          return C->isOne();
+        return false;
+      }))
+    return;
+
   const StringRef CheckName = SanitizerHandlers[CheckHandler].Name;
 
   llvm::Value *FatalCond = nullptr;

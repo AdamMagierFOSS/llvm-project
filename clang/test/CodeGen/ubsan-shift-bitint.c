@@ -24,7 +24,7 @@ int test_right_variable(unsigned _BitInt(2) b, unsigned _BitInt(3) e) {
 // CHECK-LABEL: define{{.*}} i32 @test_left_literal
 int test_left_literal(unsigned _BitInt(5) b) {
   // CHECK-NOT: br i1 false, label %cont, label %handler.shift_out_of_bounds
-  // CHECK: br i1 true, label %cont, label %handler.shift_out_of_bounds
+  // CHECK-NOT: br i1 true, label %cont, label %handler.shift_out_of_bounds
   return b << 3uwb;
 }
 
