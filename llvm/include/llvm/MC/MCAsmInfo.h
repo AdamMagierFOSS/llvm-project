@@ -86,6 +86,10 @@ protected:
   /// Code pointer size in bytes.  Default is 4.
   unsigned CodePointerSize = 4;
 
+  /// Number of 8-bit bytes per addressable unit. Default is 1 (8-bit byte).
+  /// Set to 2 for architectures with 16-bit addressable memory cells.
+  unsigned BytesPerAddressUnit = 1;
+
   /// Size of the stack slot reserved for callee-saved registers, in bytes.
   /// Default is same as pointer size.
   unsigned CalleeSaveStackSlotSize = 4;
@@ -444,6 +448,8 @@ public:
   MCAsmInfo &operator=(MCAsmInfo const &) = delete;
 
   const MCTargetOptions &getTargetOptions() const { return TargetOptions; }
+
+  unsigned getBytesPerAddressUnit() const { return BytesPerAddressUnit; }
 
   /// Get the code pointer size in bytes.
   unsigned getCodePointerSize() const { return CodePointerSize; }

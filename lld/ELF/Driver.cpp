@@ -24,6 +24,8 @@
 
 #include "Driver.h"
 #include "Config.h"
+#include "llvm/Support/RISCVAttributeParser.h"
+#include "llvm/Support/RISCVAttributes.h"
 #include "ICF.h"
 #include "InputFiles.h"
 #include "InputSection.h"
@@ -3543,6 +3545,35 @@ template <class ELFT> void LinkerDriver::link(opt::InputArgList &args) {
   setTarget(ctx);
 
   ctx.arg.eflags = ctx.target->calcEFlags();
+
+  if (auto *arg = args.getLastArg(OPT_bytes_per_addr_unit)) {
+    StringRef val = arg->getValue();
+    unsigned bpau;
+    if (!to_integer(val, bpau) || (bpau != 1 && bpau != 2))
+      ErrAlways(ctx) << "--bytes-per-addr-unit must be 1 or 2";
+    else
+      ctx.arg.bytesPerAddressUnit = bpau;
+  }
+
+  // Auto-detect BPAU from RISC-V attributes if not explicitly set.
+  // The assembler emits Tag_bytes_per_addr_unit=2 for ilp32e16 ABI.
+  if (ctx.arg.bytesPerAddressUnit == 1 && ctx.arg.emachine == EM_RISCV) {
+    for (InputFile *f : ctx.objectFiles) {
+      for (InputSectionBase *sec : f->getSections()) {
+        if (!sec || sec->type != SHT_RISCV_ATTRIBUTES)
+          continue;
+        RISCVAttributeParser parser;
+        if (!parser.parse(sec->content(), llvm::endianness::little)) {
+          if (auto bpau =
+                  parser.getAttributeValue(RISCVAttrs::BYTES_PER_ADDR_UNIT))
+            ctx.arg.bytesPerAddressUnit = *bpau;
+        }
+        break;
+      }
+      break;
+    }
+  }
+
   // maxPageSize (sometimes called abi page size) is the maximum page size that
   // the output can be run on. For example if the OS can use 4k or 64k page
   // sizes then maxPageSize must be 64k for the output to be useable on both.

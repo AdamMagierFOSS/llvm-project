@@ -100,6 +100,7 @@ RISCVRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
   default:
     llvm_unreachable("Unrecognized ABI");
   case RISCVABI::ABI_ILP32E:
+  case RISCVABI::ABI_ILP32E16:
   case RISCVABI::ABI_LP64E:
     return CSR_ILP32E_LP64E_SaveList;
   case RISCVABI::ABI_ILP32:
@@ -824,7 +825,7 @@ RISCVRegisterInfo::getCallPreservedMask(const MachineFunction & MF,
     return CSR_NoRegs_RegMask;
   RISCVABI::ABI ABI = Subtarget.getTargetABI();
   if (CC == CallingConv::PreserveMost) {
-    if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E)
+    if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E)
       return CSR_RT_MostRegs_RVE_RegMask;
     return CSR_RT_MostRegs_RegMask;
   }
@@ -832,6 +833,7 @@ RISCVRegisterInfo::getCallPreservedMask(const MachineFunction & MF,
   default:
     llvm_unreachable("Unrecognized ABI");
   case RISCVABI::ABI_ILP32E:
+  case RISCVABI::ABI_ILP32E16:
   case RISCVABI::ABI_LP64E:
     return CSR_ILP32E_LP64E_RegMask;
   case RISCVABI::ABI_ILP32:

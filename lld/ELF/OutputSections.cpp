@@ -544,18 +544,20 @@ void OutputSection::writeTo(Ctx &ctx, uint8_t *buf, parallel::TaskGroup &tg) {
 
   auto fn = [=, &ctx](size_t begin, size_t end) {
     size_t numSections = sections.size();
+    unsigned bpau = ctx.arg.bytesPerAddressUnit;
     for (size_t i = begin; i != end; ++i) {
       InputSection *isec = sections[i];
+      uint64_t bufOff = isec->outSecOff * bpau;
       if (auto *s = dyn_cast<SyntheticSection>(isec))
-        s->writeTo(buf + isec->outSecOff);
+        s->writeTo(buf + bufOff);
       else
-        isec->writeTo<ELFT>(ctx, buf + isec->outSecOff);
+        isec->writeTo<ELFT>(ctx, buf + bufOff);
 
       // When in Arm BE8 mode, the linker has to convert the big-endian
       // instructions to little-endian, leaving the data big-endian.
       if (ctx.arg.emachine == EM_ARM && !ctx.arg.isLE && ctx.arg.armBe8 &&
           (flags & SHF_EXECINSTR))
-        convertArmInstructionstoBE8(ctx, isec, buf + isec->outSecOff);
+        convertArmInstructionstoBE8(ctx, isec, buf + bufOff);
 
       // Fill gaps between sections.
       if (nonZeroFiller) {

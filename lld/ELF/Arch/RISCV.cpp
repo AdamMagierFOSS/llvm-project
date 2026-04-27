@@ -743,13 +743,14 @@ static void tlsdescToLe(uint8_t *loc, const Relocation &rel, uint64_t val) {
 
 void RISCV::relocateAlloc(InputSection &sec, uint8_t *buf) const {
   uint64_t secAddr = sec.getOutputSection()->addr + sec.outSecOff;
+  unsigned bpau = ctx.arg.bytesPerAddressUnit;
   uint64_t tlsdescVal = 0;
   bool tlsdescRelax = false, isToLe = false;
   const ArrayRef<Relocation> relocs = sec.relocs();
   for (size_t i = 0, size = relocs.size(); i != size; ++i) {
     const Relocation &rel = relocs[i];
     uint8_t *loc = buf + rel.offset;
-    uint64_t val = sec.getRelocTargetVA(ctx, rel, secAddr + rel.offset);
+    uint64_t val = sec.getRelocTargetVA(ctx, rel, secAddr + rel.offset / bpau);
 
     switch (rel.type) {
     case R_RISCV_ALIGN:
@@ -1102,6 +1103,9 @@ static bool relax(Ctx &ctx, int pass, InputSection &sec) {
 // change in section sizes can have cascading effect and require another
 // relaxation pass.
 bool RISCV::relaxOnce(int pass) const {
+  // Relaxation is not yet supported with non-standard address units.
+  if (ctx.arg.bytesPerAddressUnit > 1)
+    return false;
   llvm::TimeTraceScope timeScope("RISC-V relaxOnce");
   if (pass == 0)
     initSymbolAnchors(ctx);
@@ -1521,6 +1525,7 @@ mergeAttributesSection(Ctx &ctx,
       case RISCVAttrs::PRIV_SPEC:
       case RISCVAttrs::PRIV_SPEC_MINOR:
       case RISCVAttrs::PRIV_SPEC_REVISION:
+      case RISCVAttrs::BYTES_PER_ADDR_UNIT:
         break;
 
       case RISCVAttrs::AttrType::ATOMIC_ABI:

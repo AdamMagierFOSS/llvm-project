@@ -75,7 +75,7 @@ void RISCVTargetStreamer::emitTargetAttributes(const MCSubtargetInfo &STI,
                                                bool EmitStackAlign) {
   if (EmitStackAlign) {
     unsigned StackAlign;
-    if (TargetABI == RISCVABI::ABI_ILP32E)
+    if (TargetABI == RISCVABI::ABI_ILP32E || TargetABI == RISCVABI::ABI_ILP32E16)
       StackAlign = 4;
     else if (TargetABI == RISCVABI::ABI_LP64E)
       StackAlign = 8;
@@ -83,6 +83,9 @@ void RISCVTargetStreamer::emitTargetAttributes(const MCSubtargetInfo &STI,
       StackAlign = 16;
     emitAttribute(RISCVAttrs::STACK_ALIGN, StackAlign);
   }
+
+  if (TargetABI == RISCVABI::ABI_ILP32E16)
+    emitAttribute(RISCVAttrs::BYTES_PER_ADDR_UNIT, 2);
 
   auto ParseResult = RISCVFeatures::parseFeatureBits(
       STI.hasFeature(RISCV::Feature64Bit), STI.getFeatureBits());

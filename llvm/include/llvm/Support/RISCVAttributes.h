@@ -34,6 +34,7 @@ enum AttrType : unsigned {
   PRIV_SPEC_MINOR = 10,
   PRIV_SPEC_REVISION = 12,
   ATOMIC_ABI = 14,
+  BYTES_PER_ADDR_UNIT = 16,
 };
 
 enum class RISCVAtomicAbiTag : unsigned {

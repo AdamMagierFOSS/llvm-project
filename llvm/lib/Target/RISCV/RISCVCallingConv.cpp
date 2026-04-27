@@ -171,7 +171,7 @@ ArrayRef<MCPhysReg> RISCV::getArgGPRs(const RISCVABI::ABI ABI) {
   static const MCPhysReg ArgEGPRs[] = {RISCV::X10, RISCV::X11, RISCV::X12,
                                        RISCV::X13, RISCV::X14, RISCV::X15};
 
-  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E)
+  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E)
     return ArrayRef(ArgEGPRs);
 
   return ArrayRef(ArgIGPRs);
@@ -188,7 +188,7 @@ static ArrayRef<MCPhysReg> getArgGPR16s(const RISCVABI::ABI ABI) {
                                        RISCV::X12_H, RISCV::X13_H,
                                        RISCV::X14_H, RISCV::X15_H};
 
-  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E)
+  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E)
     return ArrayRef(ArgEGPRs);
 
   return ArrayRef(ArgIGPRs);
@@ -205,7 +205,7 @@ static ArrayRef<MCPhysReg> getArgGPR32s(const RISCVABI::ABI ABI) {
                                        RISCV::X12_W, RISCV::X13_W,
                                        RISCV::X14_W, RISCV::X15_W};
 
-  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E)
+  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E)
     return ArrayRef(ArgEGPRs);
 
   return ArrayRef(ArgIGPRs);
@@ -223,7 +223,7 @@ static ArrayRef<MCPhysReg> getFastCCArgGPRs(const RISCVABI::ABI ABI) {
   static const MCPhysReg FastCCEGPRs[] = {RISCV::X10, RISCV::X11, RISCV::X12,
                                           RISCV::X13, RISCV::X14, RISCV::X15};
 
-  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E)
+  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E)
     return ArrayRef(FastCCEGPRs);
 
   return ArrayRef(FastCCIGPRs);
@@ -243,7 +243,7 @@ static ArrayRef<MCPhysReg> getFastCCArgGPRF16s(const RISCVABI::ABI ABI) {
                                           RISCV::X12_H, RISCV::X13_H,
                                           RISCV::X14_H, RISCV::X15_H};
 
-  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E)
+  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E)
     return ArrayRef(FastCCEGPRs);
 
   return ArrayRef(FastCCIGPRs);
@@ -263,7 +263,7 @@ static ArrayRef<MCPhysReg> getFastCCArgGPRF32s(const RISCVABI::ABI ABI) {
                                           RISCV::X12_W, RISCV::X13_W,
                                           RISCV::X14_W, RISCV::X15_W};
 
-  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E)
+  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E)
     return ArrayRef(FastCCEGPRs);
 
   return ArrayRef(FastCCIGPRs);
@@ -279,7 +279,7 @@ static bool CC_RISCVAssign2XLen(CCState &State, CCValAssign VA1,
   unsigned XLen = Subtarget.getXLen();
   unsigned XLenInBytes = XLen / 8;
   RISCVABI::ABI ABI = Subtarget.getTargetABI();
-  bool EABI = ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E;
+  bool EABI = ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E;
 
   ArrayRef<MCPhysReg> ArgGPRs = RISCV::getArgGPRs(ABI);
 
@@ -388,7 +388,7 @@ static bool CC_RISCV_Impl(unsigned ValNo, MVT ValVT, MVT LocVT,
 
     RISCVABI::ABI ABI = Subtarget.getTargetABI();
     if (HasCFBranch &&
-        (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_LP64E))
+        (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16 || ABI == RISCVABI::ABI_LP64E))
       reportFatalUsageError(
           "Nested functions with control flow protection are not "
           "usable with ILP32E or LP64E ABI.");
@@ -417,6 +417,7 @@ static bool CC_RISCV_Impl(unsigned ValNo, MVT ValVT, MVT LocVT,
     llvm_unreachable("Unexpected ABI");
   case RISCVABI::ABI_ILP32:
   case RISCVABI::ABI_ILP32E:
+  case RISCVABI::ABI_ILP32E16:
   case RISCVABI::ABI_LP64:
   case RISCVABI::ABI_LP64E:
     break;
@@ -510,7 +511,7 @@ static bool CC_RISCV_Impl(unsigned ValNo, MVT ValVT, MVT LocVT,
   unsigned TwoXLenInBytes = (2 * XLen) / 8;
   if (ArgFlags.isVarArg() && ArgFlags.getNonZeroOrigAlign() == TwoXLenInBytes &&
       DL.getTypeAllocSize(OrigTy) == TwoXLenInBytes &&
-      ABI != RISCVABI::ABI_ILP32E) {
+      ABI != RISCVABI::ABI_ILP32E && ABI != RISCVABI::ABI_ILP32E16) {
     unsigned RegIdx = State.getFirstUnallocated(ArgGPRs);
     // Skip 'odd' register if necessary.
     if (RegIdx != std::size(ArgGPRs) && RegIdx % 2 == 1)

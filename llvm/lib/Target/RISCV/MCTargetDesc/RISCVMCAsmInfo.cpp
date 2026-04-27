@@ -30,6 +30,8 @@ RISCVMCAsmInfo::RISCVMCAsmInfo(const Triple &TT, const MCTargetOptions &Options)
   ExceptionsType = ExceptionHandling::DwarfCFI;
   Data16bitsDirective = "\t.half\t";
   Data32bitsDirective = "\t.word\t";
+  if (Options.getABIName() == "ilp32e16")
+    BytesPerAddressUnit = 2;
 }
 
 const MCExpr *RISCVMCAsmInfo::getExprForFDESymbol(const MCSymbol *Sym,

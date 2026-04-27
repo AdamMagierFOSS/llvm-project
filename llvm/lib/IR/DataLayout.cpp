@@ -207,6 +207,7 @@ DataLayout &DataLayout::operator=(const DataLayout &Other) {
   LayoutMap = nullptr;
   StringRepresentation = Other.StringRepresentation;
   BigEndian = Other.BigEndian;
+  ByteWidth = Other.ByteWidth;
   VectorsAreElementAligned = Other.VectorsAreElementAligned;
   AllocaAddrSpace = Other.AllocaAddrSpace;
   ProgramAddrSpace = Other.ProgramAddrSpace;
@@ -228,6 +229,7 @@ DataLayout &DataLayout::operator=(const DataLayout &Other) {
 bool DataLayout::operator==(const DataLayout &Other) const {
   // NOTE: StringRepresentation might differ, it is not canonicalized.
   return BigEndian == Other.BigEndian &&
+         ByteWidth == Other.ByteWidth &&
          VectorsAreElementAligned == Other.VectorsAreElementAligned &&
          AllocaAddrSpace == Other.AllocaAddrSpace &&
          ProgramAddrSpace == Other.ProgramAddrSpace &&
@@ -332,7 +334,8 @@ static Error parseSize(StringRef Str, unsigned &BitWidth,
 /// - the value is not a multiple of the byte width;
 /// - the value converted to byte amount is not not a power of two.
 static Error parseAlignment(StringRef Str, Align &Alignment, StringRef Name,
-                            bool AllowZero = false) {
+                            bool AllowZero = false,
+                            unsigned ByteWidth = 8) {
   if (Str.empty())
     return createStringError(Name + " alignment component cannot be empty");
 
@@ -347,7 +350,6 @@ static Error parseAlignment(StringRef Str, Align &Alignment, StringRef Name,
     return Error::success();
   }
 
-  constexpr unsigned ByteWidth = 8;
   if (Value % ByteWidth || !isPowerOf2_32(Value / ByteWidth))
     return createStringError(
         Name + " alignment must be a power of two times the byte width");
@@ -373,7 +375,7 @@ Error DataLayout::parsePrimitiveSpec(StringRef Spec) {
 
   // ABI alignment.
   Align ABIAlign;
-  if (Error Err = parseAlignment(Components[1], ABIAlign, "ABI"))
+  if (Error Err = parseAlignment(Components[1], ABIAlign, "ABI", false, ByteWidth))
     return Err;
 
   if (Specifier == 'i' && BitWidth == 8 && ABIAlign != 1)
@@ -382,7 +384,7 @@ Error DataLayout::parsePrimitiveSpec(StringRef Spec) {
   // Preferred alignment. Optional, defaults to the ABI alignment.
   Align PrefAlign = ABIAlign;
   if (Components.size() > 2)
-    if (Error Err = parseAlignment(Components[2], PrefAlign, "preferred"))
+    if (Error Err = parseAlignment(Components[2], PrefAlign, "preferred", false, ByteWidth))
       return Err;
 
   if (PrefAlign < ABIAlign)
@@ -414,13 +416,13 @@ Error DataLayout::parseAggregateSpec(StringRef Spec) {
   // ABI alignment. Required. Can be zero, meaning use one byte alignment.
   Align ABIAlign;
   if (Error Err =
-          parseAlignment(Components[1], ABIAlign, "ABI", /*AllowZero=*/true))
+          parseAlignment(Components[1], ABIAlign, "ABI", /*AllowZero=*/true, ByteWidth))
     return Err;
 
   // Preferred alignment. Optional, defaults to the ABI alignment.
   Align PrefAlign = ABIAlign;
   if (Components.size() > 2)
-    if (Error Err = parseAlignment(Components[2], PrefAlign, "preferred"))
+    if (Error Err = parseAlignment(Components[2], PrefAlign, "preferred", false, ByteWidth))
       return Err;
 
   if (PrefAlign < ABIAlign)
@@ -482,14 +484,14 @@ Error DataLayout::parsePointerSpec(
 
   // ABI alignment. Required, cannot be zero.
   Align ABIAlign;
-  if (Error Err = parseAlignment(Components[2], ABIAlign, "ABI"))
+  if (Error Err = parseAlignment(Components[2], ABIAlign, "ABI", false, ByteWidth))
     return Err;
 
   // Preferred alignment. Optional, defaults to the ABI alignment.
   // Cannot be zero.
   Align PrefAlign = ABIAlign;
   if (Components.size() > 3)
-    if (Error Err = parseAlignment(Components[3], PrefAlign, "preferred"))
+    if (Error Err = parseAlignment(Components[3], PrefAlign, "preferred", false, ByteWidth))
       return Err;
 
   if (PrefAlign < ABIAlign)
@@ -558,6 +560,18 @@ Error DataLayout::parseSpecification(
     // Deprecated, but ignoring here to preserve loading older textual llvm
     // ASM file
     break;
+  case 'B': { // Byte width in bits.
+    // B<bits>
+    if (Rest.empty())
+      return createSpecFormatError("B<bits>");
+    unsigned BW;
+    if (Error Err = parseSize(Rest, BW))
+      return Err;
+    if (!isPowerOf2_32(BW) || BW < 8)
+      return createStringError("byte width must be a power of two >= 8");
+    ByteWidth = BW;
+    break;
+  }
   case 'e':
   case 'E':
     if (!Rest.empty())
@@ -579,7 +593,7 @@ Error DataLayout::parseSpecification(
     if (Rest.empty())
       return createSpecFormatError("S<size>");
     Align Alignment;
-    if (Error Err = parseAlignment(Rest, Alignment, "stack natural"))
+    if (Error Err = parseAlignment(Rest, Alignment, "stack natural", false, ByteWidth))
       return Err;
     StackNaturalAlign = Alignment;
     break;
@@ -602,7 +616,7 @@ Error DataLayout::parseSpecification(
                                Twine(Type) + "'");
     }
     Align Alignment;
-    if (Error Err = parseAlignment(Rest, Alignment, "ABI"))
+    if (Error Err = parseAlignment(Rest, Alignment, "ABI", false, ByteWidth))
       return Err;
     FunctionPtrAlign = Alignment;
     break;
@@ -821,7 +835,7 @@ Align DataLayout::getPointerPrefAlignment(unsigned AS) const {
 }
 
 unsigned DataLayout::getPointerSize(unsigned AS) const {
-  return divideCeil(getPointerSpec(AS).BitWidth, 8);
+  return divideCeil(getPointerSpec(AS).BitWidth, ByteWidth);
 }
 
 unsigned DataLayout::getPointerTypeSizeInBits(Type *Ty) const {
@@ -832,7 +846,7 @@ unsigned DataLayout::getPointerTypeSizeInBits(Type *Ty) const {
 }
 
 unsigned DataLayout::getIndexSize(unsigned AS) const {
-  return divideCeil(getPointerSpec(AS).IndexBitWidth, 8);
+  return divideCeil(getPointerSpec(AS).IndexBitWidth, ByteWidth);
 }
 
 unsigned DataLayout::getIndexTypeSizeInBits(Type *Ty) const {
@@ -899,7 +913,7 @@ Align DataLayout::getAlignment(Type *Ty, bool abi_or_pref) const {
     // approximation of reality, and if the user wanted something less
     // less conservative, they should have specified it explicitly in the data
     // layout.
-    return Align(PowerOf2Ceil(BitWidth / 8));
+    return Align(PowerOf2Ceil(BitWidth / ByteWidth));
   }
   case Type::FixedVectorTyID:
   case Type::ScalableVectorTyID: {
@@ -950,7 +964,7 @@ TypeSize DataLayout::getTypeAllocSize(Type *Ty) const {
   }
   case Type::IntegerTyID: {
     unsigned BitWidth = Ty->getIntegerBitWidth();
-    TypeSize Size = TypeSize::getFixed(divideCeil(BitWidth, 8));
+    TypeSize Size = TypeSize::getFixed(divideCeil(BitWidth, ByteWidth));
     Align A = getIntegerAlignment(BitWidth, /*ABI=*/true);
     return alignTo(Size, A.value());
   }

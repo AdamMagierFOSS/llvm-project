@@ -189,6 +189,16 @@ public:
       return true;
     }
 
+    if (Name == "ilp32e16") {
+      ABI = Name;
+      // Nothing can be smaller than one 16-bit cell.
+      BoolWidth = BoolAlign = 16;
+      CharWidth = CharAlign = 16;
+      ShortWidth = ShortAlign = 16;
+      resetDataLayout();
+      return true;
+    }
+
     if (Name == "ilp32" || Name == "ilp32f" || Name == "ilp32d") {
       ABI = Name;
       return true;

@@ -501,7 +501,26 @@ bool RISCVAsmBackend::writeNopData(raw_ostream &OS, uint64_t Count,
 }
 
 static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-                                 MCContext &Ctx) {
+                                 MCContext &Ctx, bool Is16BitByte = false) {
+  // MC layer computes fixup values in 8-bit byte offsets. For 16-bit byte
+  // targets, convert to cell offsets for address-related fixups.
+  if (Is16BitByte) {
+    switch (Fixup.getKind()) {
+    case RISCV::fixup_riscv_jal:
+    case RISCV::fixup_riscv_branch:
+    case RISCV::fixup_riscv_qc_e_branch:
+    case RISCV::fixup_riscv_rvc_jump:
+    case RISCV::fixup_riscv_rvc_branch:
+    case RISCV::fixup_riscv_call:
+    case RISCV::fixup_riscv_call_plt:
+    case RISCV::fixup_riscv_pcrel_hi20:
+      Value = (uint64_t)((int64_t)Value >> 1);
+      break;
+    default:
+      break;
+    }
+  }
+
   switch (Fixup.getKind()) {
   default:
     llvm_unreachable("Unknown fixup kind!");
@@ -939,7 +958,7 @@ void RISCVAsmBackend::applyFixup(const MCFragment &F, const MCFixup &Fixup,
   if (!Value)
     return; // Doesn't change encoding.
   // Apply any target-specific value adjustments.
-  Value = adjustFixupValue(Fixup, Value, Ctx);
+  Value = adjustFixupValue(Fixup, Value, Ctx, is16BitByte());
 
   // Shift the value into position.
   Value <<= Info.TargetOffset;

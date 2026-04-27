@@ -41,6 +41,10 @@ const RISCVAttributeParser::DisplayHandler
             RISCVAttrs::ATOMIC_ABI,
             &RISCVAttributeParser::atomicAbi,
         },
+        {
+            RISCVAttrs::BYTES_PER_ADDR_UNIT,
+            &ELFCompactAttrParser::integerAttribute,
+        },
 };
 
 Error RISCVAttributeParser::atomicAbi(unsigned Tag) {

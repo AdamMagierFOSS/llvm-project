@@ -346,9 +346,10 @@ static void checkDataLayoutConsistency(const TargetInfo &Target,
 
   llvm::Triple Triple = Target.getTriple();
   llvm::DataLayout DL(Target.getDataLayoutString());
+  unsigned ByteWidth = DL.getByteWidth();
   auto Check = [&](const char *Name, llvm::Type *Ty, unsigned Alignment) {
     llvm::Align DLAlign = DL.getABITypeAlign(Ty);
-    llvm::Align ClangAlign(Alignment / 8);
+    llvm::Align ClangAlign(Alignment / ByteWidth);
     if (DLAlign != ClangAlign) {
       llvm::errs() << "For target " << Triple.str() << " type " << Name
                    << " mapping to " << *Ty << " has data layout alignment "

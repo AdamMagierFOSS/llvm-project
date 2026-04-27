@@ -530,6 +530,10 @@ struct Config {
   // 4 for ELF32, 8 for ELF64.
   int wordsize;
 
+  // Number of 8-bit bytes per addressable unit. 1 for standard targets,
+  // 2 for 16-bit cell-addressed architectures like RV32E-16B.
+  int bytesPerAddressUnit = 1;
+
   // Mode of MTE to write to the dynamic array. Should be one of NT_MEMTAG_ASYNC
   // (for async), NT_MEMTAG_SYNC (for sync), or NT_MEMTAG_LEVEL_NONE (for none).
   // If async or sync is enabled, write the tag specifying the default MTE mode.

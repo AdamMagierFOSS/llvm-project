@@ -73,10 +73,10 @@ ABI computeTargetABI(const Triple &TT, const FeatureBitset &FeatureBits,
               "target-abi)\n";
     TargetABI = ABI_Unknown;
   } else if (!IsRV64 && IsRVE && TargetABI != ABI_ILP32E &&
-             TargetABI != ABI_Unknown) {
+             TargetABI != ABI_ILP32E16 && TargetABI != ABI_Unknown) {
     // TODO: move this checking to RISCVTargetLowering and RISCVAsmParser
     errs()
-        << "Only the ilp32e ABI is supported for RV32E (ignoring target-abi)\n";
+        << "Only the ilp32e/ilp32e16 ABI is supported for RV32E (ignoring target-abi)\n";
     TargetABI = ABI_Unknown;
   } else if (IsRV64 && IsRVE && TargetABI != ABI_LP64E &&
              TargetABI != ABI_Unknown) {
@@ -87,9 +87,10 @@ ABI computeTargetABI(const Triple &TT, const FeatureBitset &FeatureBits,
   }
 
   if ((TargetABI == RISCVABI::ABI::ABI_ILP32E ||
+       TargetABI == RISCVABI::ABI::ABI_ILP32E16 ||
        (TargetABI == ABI_Unknown && IsRVE && !IsRV64)) &&
       FeatureBits[RISCV::FeatureStdExtD])
-    reportFatalUsageError("ILP32E cannot be used with the D ISA extension");
+    reportFatalUsageError("ILP32E/ILP32E16 cannot be used with the D ISA extension");
 
   if (TargetABI != ABI_Unknown)
     return TargetABI;
@@ -107,6 +108,7 @@ ABI getTargetABI(StringRef ABIName) {
                        .Case("ilp32f", ABI_ILP32F)
                        .Case("ilp32d", ABI_ILP32D)
                        .Case("ilp32e", ABI_ILP32E)
+                       .Case("ilp32e16", ABI_ILP32E16)
                        .Case("lp64", ABI_LP64)
                        .Case("lp64f", ABI_LP64F)
                        .Case("lp64d", ABI_LP64D)

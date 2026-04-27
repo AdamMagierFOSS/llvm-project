@@ -2635,7 +2635,8 @@ template <class ELFT> void Writer<ELFT>::assignFileOffsetsBinary() {
   for (OutputSection *sec : ctx.outputSections)
     if (needsOffset(*sec)) {
       sec->offset -= minAddr;
-      fileSize = std::max(fileSize, sec->offset + sec->size);
+      unsigned bpau = (sec->flags & SHF_ALLOC) ? ctx.arg.bytesPerAddressUnit : 1;
+      fileSize = std::max(fileSize, sec->offset + sec->size * bpau);
     }
 }
 
@@ -2662,7 +2663,7 @@ template <class ELFT> void Writer<ELFT>::assignFileOffsets() {
     off = computeFileOffset(ctx, sec, off);
     sec->offset = off;
     if (sec->type != SHT_NOBITS)
-      off += sec->size;
+      off += sec->size * ctx.arg.bytesPerAddressUnit;
 
     // If this is a last section of the last executable segment and that
     // segment is the last loadable segment, align the offset of the
@@ -2694,7 +2695,8 @@ template <class ELFT> void Writer<ELFT>::assignFileOffsets() {
   for (OutputSection *sec : ctx.outputSections) {
     if (sec->type == SHT_NOBITS)
       continue;
-    if ((sec->offset > fileSize) || (sec->offset + sec->size > fileSize))
+    unsigned bpau2 = (sec->flags & SHF_ALLOC) ? ctx.arg.bytesPerAddressUnit : 1;
+    if ((sec->offset > fileSize) || (sec->offset + sec->size * bpau2 > fileSize))
       ErrAlways(ctx) << "unable to place section " << sec->name
                      << " at file offset "
                      << rangeToString(sec->offset, sec->size)
@@ -2728,8 +2730,10 @@ template <class ELFT> void Writer<ELFT>::setPhdrs(Partition &part) {
 
     if (first) {
       p->p_filesz = last->offset - first->offset;
-      if (last->type != SHT_NOBITS)
-        p->p_filesz += last->size;
+      if (last->type != SHT_NOBITS) {
+        unsigned bpau = (last->flags & SHF_ALLOC) ? ctx.arg.bytesPerAddressUnit : 1;
+        p->p_filesz += last->size * bpau;
+      }
 
       p->p_memsz = last->addr + last->size - first->addr;
       p->p_offset = first->offset;

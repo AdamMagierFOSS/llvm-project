@@ -287,7 +287,8 @@ public:
   bool isSoftFPABI() const {
     return TargetABI == RISCVABI::ABI_LP64 ||
            TargetABI == RISCVABI::ABI_ILP32 ||
-           TargetABI == RISCVABI::ABI_ILP32E;
+           TargetABI == RISCVABI::ABI_ILP32E ||
+           TargetABI == RISCVABI::ABI_ILP32E16;
   }
   bool isRegisterReservedByUser(Register i) const override {
     assert(i.id() < RISCV::NUM_TARGET_REGS && "Register out of range");

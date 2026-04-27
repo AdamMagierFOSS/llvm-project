@@ -354,7 +354,8 @@ uint64_t ELFWriter::symbolValue(const MCSymbol &Sym) {
   if (Asm.isThumbFunc(&Sym))
     Res |= 1;
 
-  return Res;
+  unsigned BPAU = Asm.getContext().getAsmInfo()->getBytesPerAddressUnit();
+  return Res / BPAU;
 }
 
 static uint8_t mergeTypeForSet(uint8_t origType, uint8_t newType) {
@@ -459,6 +460,9 @@ void ELFWriter::writeSymbol(SymbolTableWriter &Writer, uint32_t StringIndex,
     if (!ESize->evaluateKnownAbsolute(Res, Asm))
       report_fatal_error("Size expression must be absolute.");
     Size = Res;
+    // Convert symbol size from bytes to address units.
+    unsigned BPAU = Asm.getContext().getAsmInfo()->getBytesPerAddressUnit();
+    Size /= BPAU;
   }
 
   // Write out the symbol table entry

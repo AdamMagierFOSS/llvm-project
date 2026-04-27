@@ -310,6 +310,9 @@ def ignore_data_address_equality: FF<"ignore-data-address-equality">,
 
 defm image_base: EEq<"image-base", "Set the base address">;
 
+defm bytes_per_addr_unit: EEq<"bytes-per-addr-unit",
+  "Number of 8-bit bytes per addressable unit (default 1, use 2 for 16-bit cell addressing)">;
+
 defm init: Eq<"init", "Specify an initializer function">,
   MetaVarName<"<symbol>">;
 

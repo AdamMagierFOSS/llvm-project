@@ -1287,7 +1287,8 @@ bool LinkerScript::assignOffsets(OutputSection *sec) {
       if (!(synthesizeAlign && ctx.target->synthesizeAlign(dot, isec)))
         dot = alignToPowerOf2(dot, isec->addralign);
       isec->outSecOff = dot - sec->addr;
-      dot += isec->getSize();
+      unsigned bpau = (sec->flags & SHF_ALLOC) ? ctx.arg.bytesPerAddressUnit : 1;
+      dot += isec->getSize() / bpau;
 
       // Update output section size after adding each section. This is so that
       // SIZEOF works correctly in the case below:

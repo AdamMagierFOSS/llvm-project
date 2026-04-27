@@ -289,6 +289,11 @@ static std::string computeRISCVDataLayout(const Triple &TT, StringRef ABIName) {
 
   std::string Ret;
 
+  // Byte width must come first so subsequent specs are parsed correctly.
+  StringRef ABI = ABIName;
+  if (ABI == "ilp32e16")
+    Ret += "B16-";
+
   if (TT.isLittleEndian())
     Ret += "e";
   else
@@ -302,13 +307,21 @@ static std::string computeRISCVDataLayout(const Triple &TT, StringRef ABIName) {
     Ret += "-n32:64";
   } else {
     assert(TT.isRISCV32() && "only RV32 and RV64 are currently supported");
-    Ret += "-p:32:32-i64:64";
+    if (ABI == "ilp32e16") {
+      // With 16-bit bytes, override all alignment specs so they are
+      // consistent with ByteWidth=16.
+      Ret += "-p:32:32"
+             "-i16:16:16-i32:32:32-i64:64:64"
+             "-f16:16:16-f32:32:32-f64:64:64-f128:128:128"
+             "-a:0:64";
+    } else {
+      Ret += "-p:32:32-i64:64";
+    }
     Ret += "-n32";
   }
 
   // Stack alignment based on ABI.
-  StringRef ABI = ABIName;
-  if (ABI == "ilp32e")
+  if (ABI == "ilp32e" || ABI == "ilp32e16")
     Ret += "-S32";
   else if (ABI == "lp64e")
     Ret += "-S64";

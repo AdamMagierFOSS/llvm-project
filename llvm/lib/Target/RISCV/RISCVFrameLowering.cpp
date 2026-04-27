@@ -33,7 +33,7 @@
 using namespace llvm;
 
 static Align getABIStackAlignment(RISCVABI::ABI ABI) {
-  if (ABI == RISCVABI::ABI_ILP32E)
+  if (ABI == RISCVABI::ABI_ILP32E || ABI == RISCVABI::ABI_ILP32E16)
     return Align(4);
   if (ABI == RISCVABI::ABI_LP64E)
     return Align(8);

@@ -4457,7 +4457,8 @@ static void emitGlobalConstantImpl(const DataLayout &DL, const Constant *CV,
   assert((!AliasList || AP.TM.getTargetTriple().isOSBinFormatXCOFF()) &&
          "AliasList only expected for XCOFF");
   emitGlobalAliasInline(AP, Offset, AliasList);
-  uint64_t Size = DL.getTypeAllocSize(CV->getType());
+  const unsigned ByteScale = DL.getByteWidth() / 8;
+  uint64_t Size = DL.getTypeAllocSize(CV->getType()) * ByteScale;
 
   // Globals with sub-elements such as combinations of arrays and structs
   // are handled recursively by emitGlobalConstantImpl. Keep track of the
@@ -4494,18 +4495,21 @@ static void emitGlobalConstantImpl(const DataLayout &DL, const Constant *CV,
       return emitGlobalConstantVector(DL, CV, AP, AliasList);
 
     const uint64_t StoreSize = DL.getTypeStoreSize(CV->getType());
-    if (StoreSize <= 8) {
+    // emitIntValue works in 8-bit bytes; scale from DataLayout bytes.
+    const unsigned ByteScale = DL.getByteWidth() / 8;
+    const uint64_t EmitSize = StoreSize * ByteScale;
+    if (EmitSize <= 8) {
       if (AP.isVerbose())
         AP.OutStreamer->getCommentOS()
             << format("0x%" PRIx64 "\n", CI->getZExtValue());
-      AP.OutStreamer->emitIntValue(CI->getZExtValue(), StoreSize);
+      AP.OutStreamer->emitIntValue(CI->getZExtValue(), EmitSize);
     } else {
       emitGlobalConstantLargeInt(CI, AP);
     }
 
     // Emit tail padding if needed
     if (Size != StoreSize)
-      AP.OutStreamer->emitZeros(Size - StoreSize);
+      AP.OutStreamer->emitZeros((Size - StoreSize) * ByteScale);
 
     return;
   }

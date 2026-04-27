@@ -75,6 +75,9 @@ public:
                     const MCSubtargetInfo *STI) const override;
 
   const MCTargetOptions &getTargetOptions() const { return TargetOptions; }
+  bool is16BitByte() const {
+    return TargetOptions.getABIName() == "ilp32e16";
+  }
 };
 }
 

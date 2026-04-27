@@ -110,6 +110,9 @@ private:
   bool BigEndian = false;
   bool VectorsAreElementAligned = false;
 
+  /// Width of an addressable unit ("byte") in bits. Default is 8.
+  unsigned ByteWidth = 8;
+
   unsigned AllocaAddrSpace = 0;
   unsigned ProgramAddrSpace = 0;
   unsigned DefaultGlobalsAddrSpace = 0;
@@ -214,6 +217,9 @@ public:
   /// Layout endianness...
   bool isLittleEndian() const { return !BigEndian; }
   bool isBigEndian() const { return BigEndian; }
+
+  /// Width of an addressable unit ("byte") in bits. Usually 8.
+  unsigned getByteWidth() const { return ByteWidth; }
 
   /// Whether vectors are element aligned, rather than naturally aligned.
   bool vectorsAreElementAligned() const { return VectorsAreElementAligned; }
@@ -533,7 +539,7 @@ public:
   }
 
   unsigned getPointerTypeSize(Type *Ty) const {
-    return getPointerTypeSizeInBits(Ty) / 8;
+    return getPointerTypeSizeInBits(Ty) / getByteWidth();
   }
 
   /// Size examples:
@@ -571,21 +577,21 @@ public:
   /// For example, returns 5 for i36 and 10 for x86_fp80.
   TypeSize getTypeStoreSize(Type *Ty) const {
     TypeSize StoreSizeInBits = getTypeStoreSizeInBits(Ty);
-    return {StoreSizeInBits.getKnownMinValue() / 8,
+    return {StoreSizeInBits.getKnownMinValue() / getByteWidth(),
             StoreSizeInBits.isScalable()};
   }
 
   /// Returns the maximum number of bits that may be overwritten by
-  /// storing the specified type; always a multiple of 8.
+  /// storing the specified type; always a multiple of the byte width.
   ///
   /// If Ty is a scalable vector type, the scalable property will be set and
   /// the runtime size will be a positive integer multiple of the base size.
   ///
-  /// For example, returns 40 for i36 and 80 for x86_fp80.
+  /// For example, returns 40 for i36 and 80 for x86_fp80 (with 8-bit bytes).
   TypeSize getTypeStoreSizeInBits(Type *Ty) const {
     TypeSize BaseSize = getTypeSizeInBits(Ty);
     uint64_t AlignedSizeInBits =
-        alignToPowerOf2(BaseSize.getKnownMinValue(), 8);
+        alignToPowerOf2(BaseSize.getKnownMinValue(), getByteWidth());
     return {AlignedSizeInBits, BaseSize.isScalable()};
   }
 
@@ -616,7 +622,7 @@ public:
   /// This is the amount that alloca reserves for this type. For example,
   /// returns 96 or 128 for x86_fp80, depending on alignment.
   TypeSize getTypeAllocSizeInBits(Type *Ty) const {
-    return 8 * getTypeAllocSize(Ty);
+    return getByteWidth() * getTypeAllocSize(Ty);
   }
 
   /// Returns the minimum ABI-required alignment for the specified type.
@@ -744,7 +750,9 @@ class StructLayout final : private TrailingObjects<StructLayout, TypeSize> {
 public:
   TypeSize getSizeInBytes() const { return StructSize; }
 
-  TypeSize getSizeInBits() const { return 8 * StructSize; }
+  TypeSize getSizeInBits(unsigned ByteWidth = 8) const {
+    return ByteWidth * StructSize;
+  }
 
   Align getAlignment() const { return StructAlignment; }
 
@@ -769,8 +777,8 @@ public:
     return getMemberOffsets()[Idx];
   }
 
-  TypeSize getElementOffsetInBits(unsigned Idx) const {
-    return getElementOffset(Idx) * 8;
+  TypeSize getElementOffsetInBits(unsigned Idx, unsigned ByteWidth = 8) const {
+    return getElementOffset(Idx) * ByteWidth;
   }
 
 private:
