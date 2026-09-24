@@ -1375,6 +1375,15 @@ Constant *llvm::ConstantFoldCompareInstOperands(unsigned IntPredicate,
           return ConstantFoldCompareInstOperands(Predicate, C, Null, DL, TLI);
         }
       }
+
+      // fold: icmp eq/ne (address arithmetic on a non-null object), 0
+      // Address computations that cannot leave the object they are based on,
+      // such as the sum of an object's address and an in-range offset, can
+      // never be null.
+      if (CmpInst::isEquality(Predicate) &&
+          isKnownNonZero(CE0, SimplifyQuery(DL)))
+        return ConstantInt::get(CmpInst::makeCmpResultType(CE0->getType()),
+                                Predicate == CmpInst::ICMP_NE);
     }
 
     if (auto *CE1 = dyn_cast<ConstantExpr>(Ops1)) {

@@ -39,8 +39,12 @@ void test_zero_offset_no_overflow(void) {
 
 struct sensor_reading direct[2];
 
+// The offset stays within the object, so the comparison is folded away while
+// the check is still being emitted and only the dead branch is left behind.
 // CHECK-LABEL: define {{.*}}@test_constant_gep_offset
-// CHECK: icmp ne i16 add (i16 ptrtoaddr (ptr @direct to i16), i16 8), 0, !nosanitize
+// CHECK-NOT: icmp ne i16 add (i16 ptrtoaddr (ptr @direct to i16), i16 8), 0
+// CHECK: br i1 true, label %[[CONT:[^,]+]], label %[[HANDLER:[^,]+]], {{.*}}!nosanitize
+// CHECK: [[HANDLER]]:
 // CHECK: call void @__ubsan_handle_pointer_overflow
 void test_constant_gep_offset(void) {
   // A plain index: 1 * 8 = 8, no overflow.
